@@ -3,11 +3,11 @@ SNH48 成员数据库模块
 从 h5.48.cn API 拉取全部成员数据，缓存到本地 JSON，并导入 SQLite 内存数据库。
 """
 
-import os
 import json
 import sqlite3
 import logging
 import pathlib
+import time
 import requests
 
 logger = logging.getLogger(__name__)
@@ -72,6 +72,7 @@ class SNH48MemberDB:
     def __init__(self, cache_file: str | pathlib.Path | None = None):
         self.cache_file = pathlib.Path(cache_file) if cache_file else _DEFAULT_CACHE_FILE
         self._conn: sqlite3.Connection | None = None
+        self._last_refresh_time: float = 0.0  # Unix 时间戳，0 表示从未刷新
         self._load()
 
     # ------------------------------------------------------------------
@@ -130,11 +131,19 @@ class SNH48MemberDB:
         logger.info(f"SQLite 内存数据库构建完成，共 {len(rows)} 行")
 
     def _load(self):
-        """启动时加载数据：无缓存则先从 API 拉取。"""
+        """
+        启动时加载数据策略：
+        - 有本地缓存 → 先从缓存快速加载（保证启动速度），再触发一次后台式刷新标记
+        - 无本地缓存 → 直接从 API 拉取
+        启动时始终视为"刚刚刷新过"，由调用方决定是否立即强制刷新。
+        """
         if not self.cache_file.exists():
             members = self._fetch_and_save()
+            self._last_refresh_time = time.time()
         else:
             members = self._load_from_cache()
+            # 缓存存在时，将 _last_refresh_time 置为 0，让外部 TTL 逻辑决定是否刷新
+            self._last_refresh_time = 0.0
         self._build_db(members)
 
     # ------------------------------------------------------------------
@@ -145,7 +154,28 @@ class SNH48MemberDB:
         """强制从 API 重新拉取数据并重建数据库。返回成员数量。"""
         members = self._fetch_and_save()
         self._build_db(members)
+        self._last_refresh_time = time.time()
         return len(members)
+
+    def is_stale(self, ttl_seconds: float) -> bool:
+        """
+        判断数据是否已超过 TTL（过期）。
+        若 _last_refresh_time 为 0（启动时读取缓存），视为立即过期。
+        """
+        if self._last_refresh_time == 0.0:
+            return True
+        return (time.time() - self._last_refresh_time) >= ttl_seconds
+
+    def refresh_if_stale(self, ttl_seconds: float) -> bool:
+        """
+        若数据已过期，自动从 API 刷新。
+        返回 True 表示发生了刷新，False 表示数据仍在有效期内。
+        """
+        if self.is_stale(ttl_seconds):
+            logger.info(f"数据已过期（TTL={ttl_seconds}s），自动刷新...")
+            self.refresh()
+            return True
+        return False
 
     def execute_sql(self, sql: str) -> list[dict]:
         """

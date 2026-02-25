@@ -6,6 +6,7 @@ SNH48 MCP 服务器 - 成员查询模块
   - refresh_member_data: 强制从 API 重新拉取并重建数据库
 """
 
+import os
 import logging
 from fastmcp import FastMCP
 from snh48_mcp.member_db import SNH48MemberDB
@@ -14,7 +15,11 @@ logging.basicConfig(level=logging.INFO)
 
 mcp = FastMCP("SNH48 MCP Server")
 
-# 全局数据库实例（服务启动时加载）
+# 缓存 TTL（秒）：每次 session 开始（_last_refresh_time=0）或距上次刷新超过此时长时自动重新拉取
+# 可通过环境变量 SNH48_CACHE_TTL 覆盖，默认 3600 秒（1 小时）
+_CACHE_TTL = float(os.environ.get("SNH48_CACHE_TTL", "3600"))
+
+# 全局数据库实例（服务启动时加载本地缓存，首次工具调用时触发刷新）
 _db = SNH48MemberDB()
 
 
@@ -108,6 +113,8 @@ def query_members_sql(sql: str) -> list[dict]:
         查询结果列表，每条记录为字典（字段名 → 值）。
     """
     try:
+        # 每次工具调用前检查 TTL，过期则自动刷新（覆盖 session 开始和长时间间隔两种场景）
+        _db.refresh_if_stale(_CACHE_TTL)
         results = _db.execute_sql(sql)
         return results
     except ValueError as e:
