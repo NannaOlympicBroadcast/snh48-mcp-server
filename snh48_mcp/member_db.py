@@ -114,7 +114,8 @@ class SNH48MemberDB:
 
     def _build_db(self, members: list[dict]):
         """将成员列表导入 SQLite 内存数据库。"""
-        conn = sqlite3.connect(":memory:")
+        # 使用 URI 模式启用 shared cache，从而解决部分跨线程共享内存库的问题
+        conn = sqlite3.connect("file:memdb1?mode=memory&cache=shared", uri=True, check_same_thread=False)
         conn.row_factory = sqlite3.Row
         conn.execute(_CREATE_TABLE_SQL)
 

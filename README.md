@@ -164,3 +164,13 @@ snh48-agent-n-mcp/
 ## 数据来源
 
 成员数据来自 SNH48 官方 API
+
+---
+
+## 技术说明
+
+### SQLite 线程安全
+
+`member_db.py` 使用 `sqlite3.connect("file:memdb1?mode=memory&cache=shared", uri=True, check_same_thread=False)` 创建共享内存数据库。
+
+FastMCP 框架通过**线程池**分发工具调用，因此除了关闭 SQLite 的默认单线程限制外，还使用了 shared cache 模式，确保跨线程读取内存库的数据时不会因隔离报错。本项目所有 SQL 均为只读 `SELECT`，不存在并发写入风险，安全。
