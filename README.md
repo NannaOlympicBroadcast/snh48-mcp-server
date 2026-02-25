@@ -33,7 +33,7 @@ python -m snh48_mcp.server
 ### 3. 调试（带 Inspector UI）
 
 ```bash
-fastmcp dev src/snh48_mcp/server.py
+fastmcp dev snh48_mcp/server.py
 ```
 
 ---
@@ -149,7 +149,7 @@ SNH48_CACHE_TTL=1800 python -m snh48_mcp.server
 
 ```
 snh48-agent-n-mcp/
-├── src/snh48_mcp/
+├── snh48_mcp/
 │   ├── __init__.py
 │   ├── member_db.py    # 数据层：API 拉取 → JSON 缓存 → SQLite 内存库
 │   └── server.py       # MCP 服务器入口
