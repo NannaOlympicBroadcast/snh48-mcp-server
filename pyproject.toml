@@ -17,4 +17,4 @@ dependencies = [
 snh48-mcp = "snh48_mcp.server:mcp.run"
 
 [tool.setuptools.packages.find]
-where = ["src"]
+where = ["."]

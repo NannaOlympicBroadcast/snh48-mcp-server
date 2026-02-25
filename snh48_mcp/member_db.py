@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 _API_URL = "https://h5.48.cn/resource/jsonp/allmembers.php?gid=00&callback=get_members_success"
 
 # 默认缓存文件路径（相对于本模块所在包的上两层，即项目根目录的 data/ 下）
-_DEFAULT_CACHE_FILE = pathlib.Path(__file__).parent.parent.parent / "data" / "snh48_members.json"
+_DEFAULT_CACHE_FILE = pathlib.Path(__file__).parent.parent / "data" / "snh48_members.json"
 
 # SQLite 表结构（所有字段均为 TEXT，与原始 JSON 保持一致）
 _CREATE_TABLE_SQL = """
