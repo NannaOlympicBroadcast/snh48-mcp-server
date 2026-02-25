@@ -1,0 +1,20 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+
+[project]
+name = "snh48-mcp"
+version = "0.1.0"
+description = "SNH48 GROUP MCP Server - 成员、公演、竞价查询"
+requires-python = ">=3.11"
+dependencies = [
+    "fastmcp",
+    "requests",
+]
+
+[project.scripts]
+snh48-mcp = "snh48_mcp.server:mcp.run"
+
+[tool.setuptools.packages.find]
+where = ["src"]
