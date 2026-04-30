@@ -16,7 +16,13 @@
 
 ---
 
-## 快速开始
+## 一键安装
+将以下指令发送给你的agent
+```plaintext
+使用git将https://github.com/NannaOlympicBroadcast/snh48-mcp-server.git项目克隆到本地，理解其作为snh48-mcp的项目结构，然后安装项目中的mcp服务器至本地agent
+```
+
+## 本地开发
 
 ### 1. 安装
 
@@ -48,7 +54,7 @@ fastmcp dev snh48_mcp/server.py
     "snh48": {
       "command": "python",
       "args": ["-m", "snh48_mcp.server"],
-      "cwd": "/path/to/snh48-agent-n-mcp"
+      "cwd": "/path/to/the-cloned-local-directory"
     }
   }
 }
