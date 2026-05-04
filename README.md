@@ -1,182 +1,66 @@
-# SNH48 MCP Server
+# SNH48 Agent Skill
 
-**SNH48 GROUP** 相关信息查询的 MCP（Model Context Protocol）服务器，支持通过 AI 助手查询成员、公演票务、竞价等信息。
+这个仓库已从 **MCP Server** 改造为可直接给 Agent 使用的 **Skill** 形态。
 
-> 当前阶段：✅ 成员查询模块已完成
-
----
-
-## 功能模块
-
-| 模块 | 状态 | 说明 |
-|---|---|---|
-| 成员查询 | ✅ 已完成 | SQL 方式查询全部在籍成员信息 |
-| 公演票务 | 🚧 开发中 | — |
-| 竞价 | 🚧 开发中 | — |
+> 目标：MCP 生态收缩后，仍能让 Agent 稳定执行 SNH48 成员查询与数据刷新。
 
 ---
 
-## 一键安装
-将以下指令发送给你的agent
-```plaintext
-使用git将https://github.com/NannaOlympicBroadcast/snh48-mcp-server.git项目克隆到本地，理解其作为snh48-mcp的项目结构，然后安装项目中的mcp服务器至本地agent
-```
+## Skill 能力
 
-## 本地开发
+- 查询成员数据库（只读 SQL）
+- 自动按 TTL 刷新成员数据缓存
+- 手动强制刷新成员数据
 
-### 1. 安装
+数据源仍为 SNH48 官方成员 API。
+
+---
+
+## 安装
 
 ```bash
 pip install -e .
 ```
 
-### 2. 启动 MCP 服务器
+---
+
+## 给 Agent 的 Skill 入口
+
+本仓库提供 `SKILL.md`（给 Agent 的操作说明）+ 可执行 CLI。
+
+### CLI 命令
 
 ```bash
-python -m snh48_mcp.server
+# 查询（仅 SELECT）
+snh48-skill query "SELECT sname, gname, tname FROM members WHERE sname LIKE '%段艺璇%'"
+
+# 强制刷新缓存
+snh48-skill refresh
 ```
 
-### 3. 调试（带 Inspector UI）
+### 可选环境变量
 
-```bash
-fastmcp dev snh48_mcp/server.py
-```
-
----
-
-## 配置到 MCP 客户端
-
-以 Claude Desktop 为例，在 `claude_desktop_config.json` 中添加：
-
-```json
-{
-  "mcpServers": {
-    "snh48": {
-      "command": "python",
-      "args": ["-m", "snh48_mcp.server"],
-      "cwd": "/path/to/the-cloned-local-directory"
-    }
-  }
-}
-```
-
----
-
-## 工具说明
-
-### `query_members_sql(sql)`
-
-对 SNH48 成员数据库执行 SQL 查询，**仅支持 SELECT 语句**。
-
-数据库表：`members`，共 ~715 条记录，覆盖 SNH48、GNZ48、BEJ48、CKG48、CGT48 全部在籍成员。
-
-> **自动刷新策略**：每次工具调用时会检查数据新鲜度。服务启动后首次调用、或距上次刷新超过 TTL（默认 1 小时）时，会自动从 API 重新拉取最新数据，无需手动干预。
-
-<details>
-<summary>查看完整字段列表（29 个字段）</summary>
-
-| 字段 | 说明 | 示例 |
-|---|---|---|
-| `sid` | 成员唯一ID（主键） | `"10125"` |
-| `sname` | 中文名 | `"刘增艳"` |
-| `pinyin` | 拼音名 | `"Liu ZengYan"` |
-| `abbr` | 姓名缩写 | `"LZY"` |
-| `nickname` | 昵称（顿号分隔） | `"增锅、增增"` |
-| `gname` | 团体简称 | `SNH` \| `GNZ` \| `BEJ` \| `CKG` \| `CGT` |
-| `tname` | 队伍简称 | `SII` \| `NII` \| `HII` \| `X` |
-| `pname` | 期数 | `"SNH48 五期生"` |
-| `join_day` | 加入日期 | `"2015-07-25"` |
-| `height` | 身高 (cm) | `"157"` |
-| `birth_day` | 生日 (MM.DD) | `"08.31"` |
-| `star_sign_12` | 十二星座 | `"处女座"` |
-| `birth_place` | 出生地 | `"中国 四川 "` |
-| `blood_type` | 血型 | `A` \| `B` \| `O` \| `AB` \| `-` |
-| `speciality` | 特长 | `"合气道、日翻歌曲"` |
-| `hobby` | 爱好 | `"ACG、电吉他"` |
-| `experience` | 成员经历（含 `<br>` 换行） | 历届总决选成绩等 |
-| `catch_phrase` | 口号 | `"增锅用蒸锅..."` |
-| `ranking` | 年度盛典排名（0=未上榜） | `"6"` |
-| `pocket_id` | 口袋48 ID（0=无账号） | `"63566"` |
-| `weibo_uid` | 微博UID（0=无） | `"5681431767"` |
-| `is_group_new` | 新成员 (1=是) | `"0"` |
-| `status` | 状态（99=在籍） | `"99"` |
-
-</details>
-
-**示例查询：**
-
-```sql
--- 按姓名搜索
-SELECT sname, pinyin, gname, tname, pname FROM members WHERE sname LIKE '%段艺璇%'
-
--- 统计各队伍人数
-SELECT gname, tname, COUNT(*) AS cnt FROM members GROUP BY gname, tname ORDER BY gname
-
--- 查询四川籍成员
-SELECT sname, gname, tname FROM members WHERE birth_place LIKE '%四川%'
-
--- 年度盛典排名前10
-SELECT sname, gname, tname, CAST(ranking AS INTEGER) AS r
-FROM members WHERE ranking != '0' ORDER BY r LIMIT 10
-
--- 身高最高的10位成员
-SELECT sname, gname, tname, CAST(height AS INTEGER) AS h
-FROM members WHERE height != '' ORDER BY h DESC LIMIT 10
-```
-
----
-
-### `refresh_member_data()`
-
-强制从 SNH48 官方 API 重新拉取最新成员数据，覆盖本地缓存并重建数据库。
-
----
-
-## 数据更新策略
-
-| 场景 | 行为 |
-|---|---|
-| 服务启动，有本地缓存 | 快速从缓存加载，首次工具调用时触发自动刷新 |
-| 服务启动，无本地缓存 | 直接从 API 拉取 |
-| 距上次刷新 < TTL | 跳过刷新，直接使用内存数据 |
-| 距上次刷新 ≥ TTL | 自动从 API 重新拉取并更新内存数据库 |
-| 手动调用 `refresh_member_data()` | 立即强制刷新，无视 TTL |
-
-默认 TTL 为 **3600 秒（1 小时）**，可通过环境变量覆盖：
-
-```bash
-# 设置缓存有效期为 30 分钟
-SNH48_CACHE_TTL=1800 python -m snh48_mcp.server
-```
+- `SNH48_CACHE_TTL`：缓存 TTL（秒），默认 `3600`
+- `SNH48_CACHE_FILE`：缓存文件路径（默认 `data/snh48_members.json`）
 
 ---
 
 ## 项目结构
 
-```
-snh48-agent-n-mcp/
+```text
+snh48-mcp-server/
+├── SKILL.md                 # Agent Skill 说明（核心）
 ├── snh48_mcp/
-│   ├── __init__.py
-│   ├── member_db.py    # 数据层：API 拉取 → JSON 缓存 → SQLite 内存库
-│   └── server.py       # MCP 服务器入口
-├── data/               # 本地缓存（.gitignore 已排除）
-├── references/         # 参考脚本（.gitignore 已排除）
+│   ├── member_db.py         # 数据层：API 拉取 → JSON 缓存 → SQLite 内存库
+│   └── skill_tools.py       # Skill CLI 入口
+├── data/                    # 本地缓存目录（运行后自动生成）
 ├── pyproject.toml
 └── requirements.txt
 ```
 
 ---
 
-## 数据来源
+## 说明
 
-成员数据来自 SNH48 官方 API
-
----
-
-## 技术说明
-
-### SQLite 线程安全
-
-`member_db.py` 使用 `sqlite3.connect("file:memdb1?mode=memory&cache=shared", uri=True, check_same_thread=False)` 创建共享内存数据库。
-
-FastMCP 框架通过**线程池**分发工具调用，因此除了关闭 SQLite 的默认单线程限制外，还使用了 shared cache 模式，确保跨线程读取内存库的数据时不会因隔离报错。本项目所有 SQL 均为只读 `SELECT`，不存在并发写入风险，安全。
+- `server.py` 保留为历史兼容文件，不再作为推荐入口。
+- 推荐所有 Agent 集成都走 `SKILL.md` 中定义的工作流。
