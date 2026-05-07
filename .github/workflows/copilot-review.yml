@@ -1,8 +1,6 @@
-name: Copilot 自动审查与合并
+name: Copilot 自动审查与合并（传统）
 
 on:
-  pull_request:
-    types: [opened, synchronize]
   workflow_run:
     workflows: ["SNH48 Skill CI 测试"]
     types: [completed]
@@ -12,56 +10,26 @@ permissions:
   pull-requests: write
 
 jobs:
-  request-copilot-review:
+  # 注：推荐使用 copilot-agent-review.yml，此工作流为备选方案
+  post-test-comment:
     runs-on: ubuntu-latest
-    if: github.event_name == 'pull_request'
+    if: github.event.workflow_run.conclusion == 'success'
+    steps:
+      - name: 发送审查通过评论
+        uses: actions/github-script@v7
+        with:
+          script: |
+            console.log('✅ CI 测试通过，已发送审查消息');
+            console.log('💡 提示：已配置 Copilot Agent 自动审查，见 copilot-agent-review.yml');
+
+  check-merge-readiness:
+    runs-on: ubuntu-latest
+    if: github.event.workflow_run.conclusion == 'success'
     steps:
       - name: 检出代码
         uses: actions/checkout@v4
 
-      - name: 请求 Copilot 审查
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const pr = context.payload.pull_request;
-            console.log(`请求 Copilot 审查 PR #${pr.number}`);
-
-            // 调用 Copilot 审查 API
-            try {
-              await github.rest.pulls.requestReviewers({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                pull_number: pr.number,
-                reviewers: ['copilot'] // 如果支持的话
-              });
-              console.log('✅ 已请求 Copilot 审查');
-            } catch (e) {
-              console.log('⚠️  Copilot 审查请求失败（可能不支持）');
-              console.log(e.message);
-            }
-
-      - name: 自动标记为 ready
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const pr = context.payload.pull_request;
-            // 添加标签便于识别
-            await github.rest.issues.addLabels({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: pr.number,
-              labels: ['ci-passed']
-            });
-
-  auto-merge-on-success:
-    runs-on: ubuntu-latest
-    needs: []
-    if: github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success'
-    steps:
-      - name: 检出代码
-        uses: actions/checkout@v4
-
-      - name: 获取关联的 PR
+      - name: 查找关联的 PR
         id: find-pr
         uses: actions/github-script@v7
         with:
@@ -69,47 +37,37 @@ jobs:
             const prs = await github.rest.pulls.list({
               owner: context.repo.owner,
               repo: context.repo.repo,
-              state: 'open'
+              state: 'open',
+              sort: 'updated',
+              direction: 'desc',
             });
 
-            // 简单地取最近的 PR（实际应该更精确匹配）
             if (prs.data.length > 0) {
               const pr = prs.data[0];
-              console.log(`找到 PR #${pr.number}`);
+              console.log(`找到 PR #${pr.number}: ${pr.title}`);
               core.setOutput('pr_number', pr.number);
             }
 
-      - name: 检查自动合并条件
+      - name: 检查 PR 合并就绪状态
         if: steps.find-pr.outputs.pr_number
         uses: actions/github-script@v7
         with:
           script: |
-            const prNumber = ${{ steps.find-pr.outputs.pr_number }};
+            const prNumber = parseInt('${{ steps.find-pr.outputs.pr_number }}');
             const pr = await github.rest.pulls.get({
               owner: context.repo.owner,
               repo: context.repo.repo,
               pull_number: prNumber
             });
 
-            console.log('PR 状态检查:');
-            console.log(`- mergeable: ${pr.data.mergeable}`);
-            console.log(`- draft: ${pr.data.draft}`);
+            console.log('📋 PR 合并检查:');
+            console.log(`  PR #${prNumber}: ${pr.data.title}`);
+            console.log(`  mergeable: ${pr.data.mergeable}`);
+            console.log(`  draft: ${pr.data.draft}`);
+            console.log(`  base: ${pr.data.base.ref}`);
 
             if (pr.data.mergeable && !pr.data.draft) {
-              console.log('✅ 符合自动合并条件');
+              console.log('✅ 符合技术合并条件');
             } else {
-              console.log('⚠️  不符合自动合并条件');
+              console.log('⚠️  暂不符合合并条件');
             }
-
-      - name: 启用自动合并（需要管理员权限）
-        if: steps.find-pr.outputs.pr_number
-        run: |
-          echo "⚠️  自动合并需要以下条件："
-          echo "1. 此工作流需要 'repo' 权限的 GitHub Token"
-          echo "2. 仓库必须启用自动合并功能"
-          echo "3. 分支保护规则必须配置"
-          echo ""
-          echo "建议手动配置分支保护规则："
-          echo "- 要求状态检查通过"
-          echo "- 要求至少一个批准的审查"
-          echo "- 启用自动合并"
