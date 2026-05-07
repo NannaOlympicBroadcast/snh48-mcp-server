@@ -75,17 +75,30 @@ snh48-mcp-server/
 PR 创建
   ↓
 [test.yml] 运行 CI 测试 (Python 3.11/3.12)
+  ├─ test (3.11) ✅
+  ├─ test (3.12) ✅
+  └─ lint (代码检查) ✅
   ↓ (成功)
-[copilot-agent-review.yml] Copilot Agent 自动审查
-  ├─ 执行所有 Skills（query、refresh、shows、plan）
-  ├─ 检查文档完整性（SKILL.md、README.md）
-  ├─ 代码质量检查（语法、风格）
-  ├─ 测试覆盖验证
-  └─ 生成审查报告
+[并行执行]
+  ├─ [copilot-agent-review.yml] Agent 执行 Skills
+  │  ├─ query 验证
+  │  ├─ refresh 验证
+  │  ├─ shows 验证
+  │  └─ plan 验证
+  │
+  └─ [copilot-advanced-agent.yml] 高级 Agent 审查 ⭐ 推荐
+     ├─ Copilot 理解项目（读 SKILL.md）
+     ├─ 执行所有 Skills
+     ├─ 评估代码质量
+     ├─ 评估文档完整性
+     ├─ 给出整体评分（如 9/10）
+     └─ 生成详细报告
   ↓
-自动标记标签：ci-passed, copilot-reviewed, ready-to-merge
+自动标记标签：ci-passed, ready-to-merge, copilot-advanced-reviewed
   ↓
-⏳ 等待人工批准
+PR 评论：Copilot Agent 审查报告 + 智能建议
+  ↓
+⏳ 等待人工批准 (Approve)
   ↓
 ✅ 自动或手动合并
 ```
@@ -117,7 +130,23 @@ PR 创建
 #### 3️⃣ 辅助审查流程 (`copilot-review.yml`)
 - **触发**：test.yml 成功
 - **职责**：检查 PR 合并就绪状态
-- **备注**：推荐主要使用 copilot-agent-review.yml
+
+#### 4️⃣ Copilot CLI Agent 审查 (`copilot-cli-agent.yml`) ⭐ 新增
+- **触发**：PR 创建/更新
+- **职责**：
+  - 🤖 执行所有 Skills 命令验证
+  - 📊 生成审查报告
+  - 🏷️ 自动标记 `ready-to-merge`
+
+#### 5️⃣ Copilot Advanced Agent 审查 (`copilot-advanced-agent.yml`) ⭐⭐ 推荐
+- **触发**：PR 创建/更新
+- **职责**：
+  - 🧠 Copilot 深度理解项目（读 SKILL.md）
+  - 🤖 自动验证所有 Skills
+  - 📈 评估代码和文档质量
+  - 🎯 给出智能合并建议和评分（如 9/10）
+  - 📝 详细的审查报告
+- **优势**：最智能的自动审查，推荐启用此工作流
 
 ### 分支保护配置建议
 
