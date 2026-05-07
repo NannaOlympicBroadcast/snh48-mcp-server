@@ -1,0 +1,170 @@
+name: Copilot Agent 审查技能并判断是否可合并
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    branches: [main]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  copilot-review:
+    runs-on: ubuntu-latest
+    if: github.event.pull_request.draft == false
+
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: 设置 Python 环境
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.11"
+
+      - name: 安装项目依赖
+        run: pip install -e .
+
+      - name: 检查 PERSONAL_ACCESS_TOKEN 是否已配置
+        id: check-token
+        run: |
+          if [ -z "${{ secrets.PERSONAL_ACCESS_TOKEN }}" ]; then
+            echo "configured=false" >> $GITHUB_OUTPUT
+            echo "⚠️ PERSONAL_ACCESS_TOKEN 未配置，跳过 Copilot CLI 审查"
+            echo "请在仓库 Settings → Secrets → Actions 中添加 PERSONAL_ACCESS_TOKEN"
+            echo "（需要勾选 Copilot 请求权限）"
+          else
+            echo "configured=true" >> $GITHUB_OUTPUT
+            echo "✅ PERSONAL_ACCESS_TOKEN 已配置"
+          fi
+
+      - name: 设置 Node.js 环境
+        if: steps.check-token.outputs.configured == 'true'
+        uses: actions/setup-node@v4
+
+      - name: 安装 GitHub Copilot CLI
+        if: steps.check-token.outputs.configured == 'true'
+        id: install-copilot
+        continue-on-error: true
+        run: |
+          npm install -g @github/copilot
+          echo "install_ok=true" >> $GITHUB_OUTPUT
+
+      - name: 让 Copilot 读取 SKILL.md 并运行所有技能
+        if: |
+          steps.check-token.outputs.configured == 'true' &&
+          steps.install-copilot.outputs.install_ok == 'true'
+        id: copilot-run
+        continue-on-error: true
+        env:
+          COPILOT_GITHUB_TOKEN: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
+        run: |
+          copilot -p "
+            你是一个代码审查智能体，正在审查一个 PR。
+
+            **第一步：理解项目技能**
+            读取文件 SKILL.md，了解这个项目支持哪些 snh48-skill 子命令。
+
+            **第二步：逐一运行技能**
+            依次执行 SKILL.md 中列出的每个技能命令，例如：
+            - python -m snh48_mcp.skill_tools query \"SELECT COUNT(*) as cnt FROM members\"
+            - python -m snh48_mcp.skill_tools refresh
+            - python -m snh48_mcp.skill_tools shows --gid 1 --days 7
+            - python -m snh48_mcp.skill_tools plan --gid 1 --days 7
+
+            对每个命令记录：是否成功（exit code 0）、输出是否为合法 JSON、JSON 中是否包含预期字段。
+
+            **第三步：审查代码质量**
+            检查以下几点：
+            1. 新增代码是否遵循项目已有的风格和模式
+            2. 是否有明显的 bug 或错误处理缺失
+            3. SKILL.md 和 README.md 是否已针对新功能更新
+            4. test_skills.py 中是否有对应的测试用例
+
+            **第四步：给出审查结论**
+            根据以上结果，给出明确结论：
+            - ✅ 建议合并：所有技能正常、代码质量良好、文档完整
+            - ❌ 不建议合并：说明具体原因和需要修复的问题
+
+            **输出要求**
+            将完整的审查报告写入文件 copilot_review.md，格式为 Markdown。
+            报告必须包含：每个技能的执行结果、代码审查意见、最终的合并建议。
+          " \
+            --allow-tool='shell(python:*)' \
+            --allow-tool='shell(cat:*)' \
+            --allow-tool=read \
+            --allow-tool=write \
+            --no-ask-user
+
+      - name: 将 Copilot 报告追加到 Actions 摘要
+        if: always()
+        run: |
+          if [ -f copilot_review.md ]; then
+            echo "## 🤖 Copilot 审查报告" >> "$GITHUB_STEP_SUMMARY"
+            cat copilot_review.md >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "## 🤖 Copilot 审查报告" >> "$GITHUB_STEP_SUMMARY"
+            echo "" >> "$GITHUB_STEP_SUMMARY"
+            if [ "${{ steps.check-token.outputs.configured }}" != "true" ]; then
+              echo "⚠️ **跳过**：仓库未配置 \`PERSONAL_ACCESS_TOKEN\` Secret。" >> "$GITHUB_STEP_SUMMARY"
+              echo "" >> "$GITHUB_STEP_SUMMARY"
+              echo "请在仓库 **Settings → Secrets → Actions** 中添加 \`PERSONAL_ACCESS_TOKEN\`，" >> "$GITHUB_STEP_SUMMARY"
+              echo "并勾选 **Copilot 请求** 权限，然后重新触发此工作流。" >> "$GITHUB_STEP_SUMMARY"
+            else
+              echo "⚠️ **未生成报告**：Copilot CLI 安装或运行失败，请检查 Actions 日志。" >> "$GITHUB_STEP_SUMMARY"
+            fi
+          fi
+
+      - name: 将报告发布到 PR 评论
+        if: always()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const pr = context.payload.pull_request;
+            const tokenConfigured = '${{ steps.check-token.outputs.configured }}' === 'true';
+            const installOk = '${{ steps.install-copilot.outputs.install_ok }}' === 'true';
+
+            let body;
+            if (fs.existsSync('copilot_review.md')) {
+              const report = fs.readFileSync('copilot_review.md', 'utf8');
+              body = `## 🤖 GitHub Copilot CLI 审查报告\n\n${report}`;
+            } else if (!tokenConfigured) {
+              body = [
+                '## 🤖 GitHub Copilot CLI 审查',
+                '',
+                '⚠️ **未运行**：仓库未配置 `PERSONAL_ACCESS_TOKEN` Secret。',
+                '',
+                '**启用步骤：**',
+                '1. 前往 [github.com/settings/personal-access-tokens/new](https://github.com/settings/personal-access-tokens/new)',
+                '2. 创建新 PAT，勾选 **Copilot 请求** 权限',
+                '3. 在仓库 **Settings → Secrets → Actions** 中添加，命名为 `PERSONAL_ACCESS_TOKEN`',
+                '4. 重新 push 一个空 commit 触发此工作流',
+              ].join('\n');
+            } else if (!installOk) {
+              body = [
+                '## 🤖 GitHub Copilot CLI 审查',
+                '',
+                '⚠️ **安装失败**：`@github/copilot` npm 包安装失败。',
+                '',
+                '请确认：',
+                '- 账户已订阅 GitHub Copilot（个人版 / Business / Enterprise）',
+                '- `PERSONAL_ACCESS_TOKEN` 拥有 **Copilot 请求** 权限',
+              ].join('\n');
+            } else {
+              body = [
+                '## 🤖 GitHub Copilot CLI 审查',
+                '',
+                '⚠️ **运行失败**：Copilot 未生成审查报告，请查看 Actions 日志了解详情。',
+              ].join('\n');
+            }
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: pr.number,
+              body,
+            });
