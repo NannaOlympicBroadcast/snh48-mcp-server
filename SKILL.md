@@ -15,7 +15,10 @@ name: snh48
 5. 按需强制刷新最新成员数据。
 
 ## 标准流程
-
+### 0) 安装依赖
+```bash
+pip install -e .
+```
 ### 1) 查询成员
 ```bash
 snh48-skill query "SELECT sname, gname, tname FROM members LIMIT 20"
