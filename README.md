@@ -69,40 +69,101 @@ snh48-mcp-server/
 
 ## CI/CD 流程
 
-本仓库配置了 GitHub Actions 自动化测试与审查：
+本仓库配置了完整的自动化测试与审查流水线：
 
-### 测试流水线 (`.github/workflows/test.yml`)
-- **触发条件**：PR 到 main / push 到 main
-- **测试内容**：
-  - 运行 4 个集成测试（query、refresh、shows、plan）
-  - Python 3.11 和 3.12 双版本支持
+```
+PR 创建
+  ↓
+[test.yml] 运行 CI 测试 (Python 3.11/3.12)
+  ↓ (成功)
+[copilot-agent-review.yml] Copilot Agent 自动审查
+  ├─ 执行所有 Skills（query、refresh、shows、plan）
+  ├─ 检查文档完整性（SKILL.md、README.md）
+  ├─ 代码质量检查（语法、风格）
+  ├─ 测试覆盖验证
+  └─ 生成审查报告
+  ↓
+自动标记标签：ci-passed, copilot-reviewed, ready-to-merge
+  ↓
+⏳ 等待人工批准
+  ↓
+✅ 自动或手动合并
+```
+
+### 三个工作流详解
+
+#### 1️⃣ 测试流水线 (`test.yml`)
+- **触发**：PR 创建/更新、push 到 main
+- **职责**：
+  - 4 个集成测试（query、refresh、shows、plan）
+  - Python 3.11、3.12 双版本
   - 代码格式检查（Ruff）
   - Python 语法验证
-- **成功时**：自动在 PR 评论测试结果，标记为可审查
-- **失败时**：自动评论失败信息，提示查看日志
+- **输出**：PR 评论测试结果
 
-### Copilot 审查 (`.github/workflows/copilot-review.yml`)
-- **自动请求** Copilot 代码审查
-- **CI 通过后**，自动检查合并条件
-- **支持自动合并**（需配置分支保护规则）
+#### 2️⃣ Copilot Agent 审查 (`copilot-agent-review.yml`) ⭐ **新增**
+- **触发**：PR 创建/更新（非草稿）
+- **职责**：
+  - 🤖 自动运行所有 Skill 命令验证
+  - 📝 检查文档是否完整
+  - 🔍 代码质量检查
+  - 📊 生成详细审查报告
+  - 🏷️ 自动标记 `copilot-reviewed` 和 `ready-to-merge`
+- **输出**：
+  - PR 初始评论（审查进行中）
+  - PR 最终评论（审查结果 + 合并建议）
+  - 自动标签标记
+
+#### 3️⃣ 辅助审查流程 (`copilot-review.yml`)
+- **触发**：test.yml 成功
+- **职责**：检查 PR 合并就绪状态
+- **备注**：推荐主要使用 copilot-agent-review.yml
 
 ### 分支保护配置建议
 
-在 GitHub 仓库设置中，对 `main` 分支启用：
+在 GitHub 仓库 Settings → Branches → Branch protection rules 中，对 `main` 分支配置：
 
+#### ✅ 必需项
 1. **Require status checks to pass before merging**
-   - 选择 `SNH48 Skill CI 测试` 流程
-   - 确保所有构建版本通过
+   - ☑️ `SNH48 Skill CI 测试`
+   - ☑️ `Copilot Agent 自动审查与验证`（可选）
 
 2. **Require pull request reviews before merging**
-   - 至少需要 1 个批准审查
+   - Approvals: 1
+   - ☑️ Dismiss stale pull request approvals when new commits are pushed
 
-3. **Require conversation resolution before merging**（可选）
+#### ⭐ 推荐项
+3. **Allow auto-merge**
+   - 选择合并方式：
+     - `Squash and merge` - 推荐（保持提交清晰）
+     - `Rebase and merge`
+     - `Create a merge commit`
 
-4. **Auto-merge** 配置（如果启用）
-   - 选择合并方式（建议 Squash 或 Rebase）
+配置后：
+- ✅ 所有 PR 必须通过 CI 检查
+- ✅ 必须有人工批准审查
+- ✅ 符合条件自动合并（启用自动合并时）
 
-配置后，符合条件的 PR 可自动合并，无需手动干预。
+### 典型 PR 流程
+
+1. **创建 PR**
+   ```
+   git push origin feature/my-feature
+   # 在 GitHub 上打开 PR
+   ```
+
+2. **自动测试与审查**（无需操作）
+   - `test.yml` 运行 (3-5 分钟)
+   - `copilot-agent-review.yml` 执行 (1-2 分钟)
+   - PR 自动标记为 `ready-to-merge`
+
+3. **人工审查**
+   - 审查代码
+   - 点击 `Approve` 按钮
+
+4. **自动合并**（如启用）
+   - GitHub 自动执行合并
+   - 或点击 `Squash and merge`
 
 ---
 

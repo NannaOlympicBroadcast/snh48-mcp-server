@@ -54,28 +54,43 @@ git push origin feature/your-feature-name
 - **实现**：怎么实现的
 - **测试**：如何验证功能正常
 
-### 5. 自动 CI 流程
+### 5. 自动 CI/CD 流程
 
-PR 创建后，GitHub Actions 自动运行：
+PR 创建后，GitHub Actions 自动运行三个工作流：
 
-1. **CI 测试** (`.github/workflows/test.yml`)
+1. **CI 测试** (`test.yml`)
    - Python 3.11/3.12 双版本测试
    - 4 个集成测试（query、refresh、shows、plan）
-   - 代码格式检查
+   - 代码格式检查（Ruff）
    - 测试通过时自动评论 ✅
    - 测试失败时自动评论 ❌
+   - 时间：3-5 分钟
 
-2. **Copilot 审查** (`.github/workflows/copilot-review.yml`)
-   - 自动请求 Copilot 代码审查
-   - 检查合并条件
-   - 标记 `ci-passed` 标签
+2. **Copilot Agent 自动审查** (`copilot-agent-review.yml`) ⭐ 新增
+   - 🤖 自动执行所有 Skill 命令验证
+   - 📝 检查文档完整性（SKILL.md、README.md）
+   - 🔍 代码质量检查（Python 语法）
+   - 📊 生成详细审查报告
+   - 🏷️ 自动标记 `copilot-reviewed` 和 `ready-to-merge`
+   - 时间：1-2 分钟
+
+3. **辅助审查** (`copilot-review.yml`)
+   - CI 通过后检查合并条件
+   - 发送合并建议
 
 ### 6. 自动合并
 
-配置 `main` 分支保护规则后，满足以下条件的 PR 可自动合并：
-- ✅ 所有 CI 检查通过
-- ✅ 至少 1 个批准审查
+配置 `main` 分支保护规则并启用自动合并后，满足以下条件的 PR 可自动合并：
+- ✅ `test.yml` CI 检查通过
+- ✅ `copilot-agent-review.yml` Copilot Agent 审查通过（自动）
+- ✅ 至少 1 个人工批准审查
 - ✅ 无合并冲突
+
+**自动合并流程：**
+1. Copilot Agent 自动审查，标记为 `ready-to-merge`
+2. 接收人工批准 (Approve)
+3. 如启用自动合并，GitHub 自动执行合并
+4. PR 自动关闭，分支可选删除
 
 ## 代码风格
 
