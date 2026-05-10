@@ -76,3 +76,16 @@ snh48-skill refresh
 ## 环境变量
 - `SNH48_CACHE_TTL`：成员数据缓存有效期（秒），默认 `3600`
 - `SNH48_CACHE_FILE`：成员缓存文件路径，默认 `data/snh48_members.json`
+
+## 子 Skill
+
+### live-transcriber
+
+位于 `live-transcriber/SKILL.md`，用于处理 48.cn 直播视频的完整转写流程：
+
+- 从分享链接或 liveId 提取 m3u8 流媒体地址
+- 使用 ffmpeg 下载视频并提取音频
+- 使用 faster-whisper 进行语音转文字（输出 JSON / TXT / SRT）
+- 生成结构化内容总结
+
+当用户提供 `h5.48.cn` 直播链接、要求转写直播内容或提取流媒体地址时，使用该子 skill。
