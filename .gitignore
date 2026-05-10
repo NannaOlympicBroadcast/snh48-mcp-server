@@ -1,4 +1,5 @@
 references
+!*/references/
 data/
 *.json
 __pycache__/
