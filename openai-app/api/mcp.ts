@@ -3,11 +3,38 @@ import { buildServer } from "../src/mcp-server.js";
 
 export const config = { runtime: "edge" };
 
+function firstHeaderValue(value: string | null): string | null {
+  if (!value) return null;
+  const first = value.split(",")[0]?.trim();
+  return first || null;
+}
+
 function resolveBaseUrl(req: Request): string {
   if (process.env.PUBLIC_BASE_URL) return process.env.PUBLIC_BASE_URL.replace(/\/$/, "");
-  const url = new URL(req.url);
-  const proto = req.headers.get("x-forwarded-proto") ?? url.protocol.replace(":", "");
-  const host = req.headers.get("x-forwarded-host") ?? req.headers.get("host") ?? url.host;
+  const forwardedProto = firstHeaderValue(req.headers.get("x-forwarded-proto"));
+  const forwardedHost = firstHeaderValue(req.headers.get("x-forwarded-host"));
+  const hostHeader = firstHeaderValue(req.headers.get("host"));
+
+  let url: URL | null = null;
+  try {
+    url = new URL(req.url);
+  } catch {
+    const host = forwardedHost ?? hostHeader;
+    if (host) {
+      const proto = forwardedProto === "http" || forwardedProto === "https" ? forwardedProto : "https";
+      try {
+        url = new URL(req.url, `${proto}://${host}`);
+      } catch {
+        // ignore and fall back to headers/defaults below
+      }
+    }
+  }
+
+  const proto =
+    forwardedProto === "http" || forwardedProto === "https"
+      ? forwardedProto
+      : url?.protocol.replace(":", "") || "https";
+  const host = forwardedHost ?? hostHeader ?? url?.host ?? "localhost";
   return `${proto}://${host}`;
 }
 
