@@ -3,6 +3,20 @@ import { buildServer } from "../src/mcp-server.js";
 
 export const config = { runtime: "edge" };
 
+/**
+ * Safely read a header from either a Web Request (Edge) or Node.js IncomingMessage (Serverless).
+ * Web Headers use .get(); Node.js headers are a plain object.
+ */
+function getHeader(headers: any, name: string): string | null {
+  if (typeof headers.get === "function") {
+    return headers.get(name) ?? null;
+  }
+  // Node.js IncomingMessage: headers is Record<string, string | string[] | undefined>
+  const val = headers[name.toLowerCase()];
+  if (Array.isArray(val)) return val[0] ?? null;
+  return val ?? null;
+}
+
 function firstHeaderValue(value: string | null): string | null {
   if (!value) return null;
   const first = value.split(",")[0]?.trim();
@@ -11,9 +25,9 @@ function firstHeaderValue(value: string | null): string | null {
 
 function resolveBaseUrl(req: Request): string {
   if (process.env.PUBLIC_BASE_URL) return process.env.PUBLIC_BASE_URL.replace(/\/$/, "");
-  const forwardedProto = firstHeaderValue(req.headers.get("x-forwarded-proto"));
-  const forwardedHost = firstHeaderValue(req.headers.get("x-forwarded-host"));
-  const hostHeader = firstHeaderValue(req.headers.get("host"));
+  const forwardedProto = firstHeaderValue(getHeader(req.headers, "x-forwarded-proto"));
+  const forwardedHost = firstHeaderValue(getHeader(req.headers, "x-forwarded-host"));
+  const hostHeader = firstHeaderValue(getHeader(req.headers, "host"));
 
   let url: URL | null = null;
   try {

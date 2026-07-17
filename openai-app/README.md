@@ -42,8 +42,9 @@ npm install
 npm run build   # tsc 类型检查 + 编译（Vercel 部署时会用自己的构建流程，这里主要用于类型检查）
 ```
 
-由于两个入口都使用 Web Standard `Request`/`Response`（`export const config = { runtime: "edge" }`），
-可以直接在 Node 18+ 下 `import` 后用原生 `fetch`/`Request` 构造请求做单元测试，无需真正启动 Vercel dev。
+入口声明了 `export const config = { runtime: "edge" }`，优先以 Edge Function 运行。
+当 Vercel 回退到 Node.js Serverless 时（`req` 为 `IncomingMessage`，headers 是普通对象而非 Web `Headers`），
+内置的 `getHeader()` 兼容层会自动适配两种 headers 访问方式（`.get()` vs `[key]`），无需额外处理。
 
 ## 部署到 Vercel
 
