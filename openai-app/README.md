@@ -54,6 +54,9 @@ vercel env add PUBLIC_BASE_URL   # 可选：填入最终生产域名，如 https
 vercel --prod
 ```
 
+`package.json` 已将 `main` 指向 `api/mcp.ts`，用于满足 Vercel Node 构建阶段对入口文件的检测要求，避免
+`No entrypoint found in "/vercel/path0"` 错误。
+
 - `PUBLIC_BASE_URL`：可选。不设置时，服务会根据请求的 `Host`/`X-Forwarded-Host` 自动推断当前部署域名，
   用于拼接成员照片代理链接与 widget 的 `ui.domain`/CSP 配置。生产环境建议显式设置为最终自定义域名，避免
   Vercel 预览域名（`*-git-*.vercel.app`）变化导致图片链接失效。
