@@ -17,10 +17,7 @@ export const runtime = "edge";
  * Web Request 的 headers 是 Headers 对象，具有 .get() 方法。
  */
 function isWebRequest(req: any): req is Request {
-  return (
-    typeof req?.headers?.get === "function" &&
-    typeof req?.headers?.entries === "function"
-  );
+  return typeof req?.headers?.get === "function";
 }
 
 /**
@@ -144,26 +141,56 @@ const CORS_HEADERS: Record<string, string> = {
 /*  Handler                                                            */
 /* ------------------------------------------------------------------ */
 
-export default async function handler(incoming: any): Promise<Response> {
+export default async function handler(incomingReq: any, incomingRes?: any): Promise<Response | void> {
   // 兼容 Node.js Serverless：Vercel 在非 Edge 模式下传入 IncomingMessage
-  const req: Request = isWebRequest(incoming) ? incoming : await toWebRequest(incoming);
+  const req: Request = isWebRequest(incomingReq) ? incomingReq : await toWebRequest(incomingReq);
 
+  let webRes: Response;
   if (req.method === "OPTIONS") {
-    return new Response(null, { status: 204, headers: CORS_HEADERS });
+    webRes = new Response(null, { status: 204, headers: CORS_HEADERS });
+  } else {
+    const baseUrl = resolveBaseUrl(req);
+    const server = buildServer(baseUrl);
+    // 无状态模式：每次请求独立处理，适配 Vercel Serverless/Edge 的无常驻进程模型。
+    const transport = new WebStandardStreamableHTTPServerTransport({
+      sessionIdGenerator: undefined,
+    });
+
+    await server.connect(transport);
+    const res = await transport.handleRequest(req);
+
+    const headers = new Headers(res.headers);
+    for (const [k, v] of Object.entries(CORS_HEADERS)) headers.set(k, v);
+
+    webRes = new Response(res.body, { status: res.status, headers });
   }
 
-  const baseUrl = resolveBaseUrl(req);
-  const server = buildServer(baseUrl);
-  // 无状态模式：每次请求独立处理，适配 Vercel Serverless/Edge 的无常驻进程模型。
-  const transport = new WebStandardStreamableHTTPServerTransport({
-    sessionIdGenerator: undefined,
-  });
+  // 区分执行环境：
+  // 如果存在 incomingRes 且有 end 方法，说明是 Node.js Serverless 回退，必须手动写入响应
+  if (incomingRes && typeof incomingRes.end === "function") {
+    incomingRes.statusCode = webRes.status;
+    webRes.headers.forEach((value: string, key: string) => {
+      incomingRes.setHeader(key, value);
+    });
 
-  await server.connect(transport);
-  const res = await transport.handleRequest(req);
+    if (!webRes.body) {
+      incomingRes.end();
+      return;
+    }
 
-  const headers = new Headers(res.headers);
-  for (const [k, v] of Object.entries(CORS_HEADERS)) headers.set(k, v);
+    const reader = webRes.body.getReader();
+    try {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        if (value) incomingRes.write(value);
+      }
+    } finally {
+      incomingRes.end();
+    }
+    return;
+  }
 
-  return new Response(res.body, { status: res.status, headers });
+  // 否则，在 Edge Runtime 下直接返回 Web Response
+  return webRes;
 }
