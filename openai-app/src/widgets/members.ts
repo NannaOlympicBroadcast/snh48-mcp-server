@@ -73,10 +73,18 @@ function badge(text, bg) {
   return '<span class="badge" style="background:#' + esc(bg || "8ed2f5") + '">' + esc(text) + '</span>';
 }
 
+function imgTag(m, lazy) {
+  var fallback = esc(m.fallback_photo_url);
+  var src = esc(m.photo_url);
+  var alt = esc(m.sname);
+  var onErr = "this.onerror=null;this.src='" + fallback + "';";
+  return '<img src="' + src + '" onerror="' + onErr + '" alt="' + alt + '"' + (lazy ? ' loading="lazy"' : '') + ' />';
+}
+
 function renderCard(m) {
   return '' +
     '<div class="card" data-sid="' + esc(m.sid) + '">' +
-      '<div class="photo-wrap"><img src="' + esc(m.photo_url) + '" alt="' + esc(m.sname) + '" loading="lazy" /></div>' +
+      '<div class="photo-wrap">' + imgTag(m, true) + '</div>' +
       '<div class="info">' +
         '<p class="name">' + esc(m.sname) + '</p>' +
         '<p class="sub">' + esc(m.gname) + ' · ' + esc(m.tname) + '</p>' +
@@ -89,7 +97,7 @@ function renderDetail(m) {
   return '' +
     (state.members.length > 1 ? '<span class="back-link" id="backLink">← 返回列表</span>' : '') +
     '<div class="detail">' +
-      '<div class="photo-wrap"><img src="' + esc(m.photo_url) + '" alt="' + esc(m.sname) + '" /></div>' +
+      '<div class="photo-wrap">' + imgTag(m, false) + '</div>' +
       '<div style="flex:1; min-width:0;">' +
         '<p class="name">' + esc(m.sname) + (m.nickname ? ' <span class="muted" style="font-size:13px;font-weight:400;">(' + esc(m.nickname) + ')</span>' : '') + '</p>' +
         '<p class="pinyin">' + esc(m.pinyin) + '</p>' +

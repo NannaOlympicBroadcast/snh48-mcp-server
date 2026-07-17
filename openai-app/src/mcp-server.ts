@@ -7,7 +7,7 @@ import {
   memberExperienceText,
 } from "./lib/members.js";
 import { getUpcomingShows } from "./lib/shows.js";
-import { photoUrl } from "./lib/photo.js";
+import { photoUrl, placeholderDataUri } from "./lib/photo.js";
 import { buildMembersWidgetHtml } from "./widgets/members.js";
 import { buildShowsWidgetHtml } from "./widgets/shows.js";
 
@@ -134,11 +134,15 @@ export function buildServer(baseUrl: string): McpServer {
     },
     async (args) => {
       const { members, total } = await searchMembers(args);
-      const enriched = members.map((m) => ({
-        ...m,
-        experience: memberExperienceText(m),
-        photo_url: photoUrl(baseUrl, m.sid, m.sname, m.tcolor || m.gcolor || "8ed2f5"),
-      }));
+      const enriched = members.map((m) => {
+        const color = m.tcolor || m.gcolor || "8ed2f5";
+        return {
+          ...m,
+          experience: memberExperienceText(m),
+          photo_url: photoUrl(baseUrl, m.sid, m.sname, color),
+          fallback_photo_url: placeholderDataUri(m.sname, color),
+        };
+      });
 
       const queryDesc =
         [

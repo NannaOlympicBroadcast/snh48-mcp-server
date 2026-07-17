@@ -1,6 +1,10 @@
 export function photoUrl(baseUrl: string, sid: string, sname: string, color: string): string {
-  const params = new URLSearchParams({ sid, name: sname, color });
-  return `${baseUrl}/api/img?${params.toString()}`;
+  return officialPhotoSource(sid);
+}
+
+export function placeholderDataUri(name: string, color: string): string {
+  const svg = placeholderSvg(name, color);
+  return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
 }
 
 export function officialPhotoSource(sid: string): string {
