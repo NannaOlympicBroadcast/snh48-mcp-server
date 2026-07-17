@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>SNH48 MCP App</title>
+<style>
+  body { font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif; max-width: 640px; margin: 60px auto; padding: 0 20px; color: #1b1b1f; line-height: 1.6; }
+  code { background: #f3f3f6; padding: 2px 6px; border-radius: 6px; }
+  h1 { font-size: 22px; }
+</style>
+</head>
+<body>
+  <h1>🎤 SNH48 MCP App</h1>
+  <p>这是一个基于 <a href="https://developers.openai.com/apps-sdk">OpenAI Apps SDK</a> / MCP Apps 标准的远程 MCP 服务器，
+     提供 SNH48、GNZ48、BEJ48、CKG48、CGT48 成员资料与近期公演票务查询，结果以带成员照片的可视化卡片展示。</p>
+  <p>MCP 端点：<code>/api/mcp</code>（也可通过 <code>/mcp</code> 访问）</p>
+  <p>工具：</p>
+  <ul>
+    <li><code>search_members</code> — 按姓名/团体/队伍/期数/籍贯查询成员，展示照片卡片</li>
+    <li><code>get_upcoming_shows</code> — 查询近期公演场次与票务状态</li>
+  </ul>
+  <p>在 ChatGPT（开发者模式）或 Claude 中添加此连接器时，使用本页面所在域名下的 <code>/api/mcp</code> 作为服务器地址。</p>
+</body>
+</html>

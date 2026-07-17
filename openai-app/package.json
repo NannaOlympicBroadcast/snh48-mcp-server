@@ -1,0 +1,20 @@
+{
+  "name": "snh48-openai-app",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "SNH48 MCP server with OpenAI Apps SDK / MCP Apps widgets, deployed on Vercel",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "dev": "vercel dev"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.29.0",
+    "zod": "^3.24.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "@vercel/node": "^5.0.0",
+    "typescript": "^5.7.2"
+  }
+}
