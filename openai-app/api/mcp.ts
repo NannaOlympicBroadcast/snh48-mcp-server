@@ -1,5 +1,5 @@
 import { WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js";
-import { buildServer } from "../src/server.js";
+import { buildServer } from "../src/mcp-server.js";
 
 export const config = { runtime: "edge" };
 
