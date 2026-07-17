@@ -2,6 +2,7 @@ references
 !*/references/
 data/
 *.json
+!openai-app/**/*.json
 __pycache__/
 *.py[cod]
 *.egg-info/

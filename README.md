@@ -18,6 +18,14 @@
 
 ---
 
+## OpenAI Apps SDK / MCP Apps 版本
+
+`openai-app/` 目录提供一个独立的 Node/TypeScript 实现，将同样的成员与公演查询能力封装为
+符合 **MCP Apps**（OpenAI Apps SDK 底层标准）规范的远程 MCP 服务器，带可视化 widget 界面
+（成员照片卡片、公演票务时间线），部署在 Vercel Edge Functions 上。详见 `openai-app/README.md`。
+
+---
+
 ## 安装
 
 ```bash
