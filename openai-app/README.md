@@ -22,7 +22,7 @@ openai-app/
 │   ├── mcp.ts      # MCP 端点（Vercel Edge Function，Streamable HTTP，无状态模式）
 │   └── img.ts       # 成员照片代理 + 占位图生成
 ├── src/
-│   ├── server.ts     # 注册 MCP 工具与 UI widget 资源
+│   ├── mcp-server.ts # 注册 MCP 工具与 UI widget 资源
 │   ├── lib/
 │   │   ├── members.ts  # 成员数据拉取、缓存、筛选
 │   │   ├── shows.ts    # 公演/票务数据拉取
