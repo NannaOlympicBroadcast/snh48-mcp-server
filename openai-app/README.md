@@ -42,9 +42,9 @@ npm install
 npm run build   # tsc 类型检查 + 编译（Vercel 部署时会用自己的构建流程，这里主要用于类型检查）
 ```
 
-入口声明了 `export const config = { runtime: "edge" }`，优先以 Edge Function 运行。
-当 Vercel 回退到 Node.js Serverless 时（`req` 为 `IncomingMessage`，headers 是普通对象而非 Web `Headers`），
-内置的 `getHeader()` 兼容层会自动适配两种 headers 访问方式（`.get()` vs `[key]`），无需额外处理。
+入口声明了 `export const runtime = "edge"`，以 Vercel Edge Function 运行。
+内置的 `getHeader()` 兼容层同时支持 Web `Headers`（Edge）和 Node.js 普通对象（Serverless 回退）两种访问方式，
+确保在任一运行时下都能正确读取请求头。
 
 ## 部署到 Vercel
 

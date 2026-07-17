@@ -1,7 +1,7 @@
 import { WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js";
 import { buildServer } from "../src/mcp-server.js";
 
-export const config = { runtime: "edge" };
+export const runtime = "edge";
 
 /**
  * Safely read a header from either a Web Request (Edge) or Node.js IncomingMessage (Serverless).

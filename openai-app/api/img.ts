@@ -1,6 +1,6 @@
 import { officialPhotoSource, placeholderSvg } from "../src/lib/photo.js";
 
-export const config = { runtime: "edge" };
+export const runtime = "edge";
 
 const CORS_HEADERS: Record<string, string> = {
   "Access-Control-Allow-Origin": "*",
